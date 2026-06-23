@@ -106,7 +106,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         update.effective_user.id,
         result["description"].lower(),
         result["amount"],
-        result["account"]
+        result["account"],
     )
 
     if dup_key in _recent_expenses:
@@ -129,8 +129,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 del _recent_updates[k]
 
     timestamp_str = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-    row = [timestamp_str, result["description"], result["category"],
-           result["amount"], result["account"]]
+    row = [
+        timestamp_str,
+        result["description"],
+        result["category"],
+        result["amount"],
+        result["account"],
+    ]
     try:
         # Read rows BEFORE appending (for today's total calculation)
         rows = sheet.get_all_values()
@@ -146,7 +151,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         # Cleanup undo tracking when it grows beyond 50
         if len(_last_expense) > 50:
             stale_uids = [
-                uid for uid, e in _last_expense.items()
+                uid
+                for uid, e in _last_expense.items()
                 if now - e["timestamp"] > UNDO_WINDOW_SECONDS
             ]
             for uid in stale_uids:

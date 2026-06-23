@@ -70,7 +70,8 @@ class TestTelegramStartupStatic:
         """Exactly 6 add_handler calls must appear in the __main__ block."""
         block = _get_main_block_src()
         calls = [
-            node for node in ast.walk(block)
+            node
+            for node in ast.walk(block)
             if (
                 isinstance(node, ast.Call)
                 and isinstance(node.func, ast.Attribute)
@@ -125,48 +126,64 @@ class TestTelegramStartupRuntime:
 
     def test_run_health_server_is_callable(self):
         from health import run_health_server
+
         assert callable(run_health_server)
 
     def test_cmd_start_is_coroutine_function(self):
         from handlers import cmd_start
-        assert inspect.iscoroutinefunction(cmd_start), \
+
+        assert inspect.iscoroutinefunction(cmd_start), (
             "cmd_start must be an async function"
+        )
 
     def test_cmd_today_is_coroutine_function(self):
         from handlers import cmd_today
-        assert inspect.iscoroutinefunction(cmd_today), \
+
+        assert inspect.iscoroutinefunction(cmd_today), (
             "cmd_today must be an async function"
+        )
 
     def test_cmd_last_is_coroutine_function(self):
         from handlers import cmd_last
-        assert inspect.iscoroutinefunction(cmd_last), \
+
+        assert inspect.iscoroutinefunction(cmd_last), (
             "cmd_last must be an async function"
+        )
 
     def test_cmd_help_is_coroutine_function(self):
         from handlers import cmd_help
-        assert inspect.iscoroutinefunction(cmd_help), \
+
+        assert inspect.iscoroutinefunction(cmd_help), (
             "cmd_help must be an async function"
+        )
 
     def test_cmd_undo_is_coroutine_function(self):
         from handlers import cmd_undo
-        assert inspect.iscoroutinefunction(cmd_undo), \
+
+        assert inspect.iscoroutinefunction(cmd_undo), (
             "cmd_undo must be an async function"
+        )
 
     def test_handle_message_is_coroutine_function(self):
         from handlers import handle_message
-        assert inspect.iscoroutinefunction(handle_message), \
+
+        assert inspect.iscoroutinefunction(handle_message), (
             "handle_message must be an async function"
+        )
 
     def test_bot_token_loaded_from_env(self):
         from config import BOT_TOKEN
+
         assert BOT_TOKEN == "test-token-123"
 
     def test_port_loaded_from_env(self):
         from config import PORT
+
         assert PORT == 8080
 
     def test_allowed_user_ids_parsed_correctly(self):
         from config import ALLOWED_USER_IDS
+
         assert "111" in ALLOWED_USER_IDS
         assert "222" in ALLOWED_USER_IDS
         assert "999" not in ALLOWED_USER_IDS

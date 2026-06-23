@@ -3,6 +3,7 @@ from datetime import datetime
 from unittest.mock import AsyncMock, patch
 from handlers import cmd_today, cmd_last
 
+
 class TestAnalytics:
     @pytest.fixture
     def mock_update(self):
@@ -21,7 +22,9 @@ class TestAnalytics:
         mock_update.message.reply_text.assert_called_once_with("No expenses found.")
 
     @patch("handlers.sheet")
-    async def test_today_multiple_categories(self, mock_sheet, mock_update, mock_context):
+    async def test_today_multiple_categories(
+        self, mock_sheet, mock_update, mock_context
+    ):
         today_str = datetime.now().strftime("%d-%m-%Y")
         mock_sheet.get_all_values.return_value = [
             ["Date", "Description", "Category", "Amount", "Account"],
@@ -65,7 +68,7 @@ class TestAnalytics:
             ["Date", "Description", "Category", "Amount", "Account"],
             ["1", "Chai", "Food", "20", "Cash"],
             ["2", "Uber", "Transport", "137", "BOB"],
-            ["3", "Electricity", "Bills", "636", "BOB"]
+            ["3", "Electricity", "Bills", "636", "BOB"],
         ]
         await cmd_last(mock_update, mock_context)
         call_args = mock_update.message.reply_text.call_args[0][0]
@@ -83,7 +86,7 @@ class TestAnalytics:
             ["2", "B", "Food", "10", "Cash"],
             ["3", "C", "Food", "10", "Cash"],
             ["4", "D", "Food", "10", "Cash"],
-            ["5", "E", "Food", "10", "Cash"]
+            ["5", "E", "Food", "10", "Cash"],
         ]
         await cmd_last(mock_update, mock_context)
         call_args = mock_update.message.reply_text.call_args[0][0]
@@ -91,7 +94,9 @@ class TestAnalytics:
         assert call_args.count("₹10 • Cash") == 5
 
     @patch("handlers.sheet")
-    async def test_last_more_than_5_entries(self, mock_sheet, mock_update, mock_context):
+    async def test_last_more_than_5_entries(
+        self, mock_sheet, mock_update, mock_context
+    ):
         mock_sheet.get_all_values.return_value = [
             ["Date", "Description", "Category", "Amount", "Account"],
             ["1", "DropMe", "Food", "10", "Cash"],
@@ -100,7 +105,7 @@ class TestAnalytics:
             ["4", "B", "Food", "10", "Cash"],
             ["5", "C", "Food", "10", "Cash"],
             ["6", "D", "Food", "10", "Cash"],
-            ["7", "E", "Food", "10", "Cash"]
+            ["7", "E", "Food", "10", "Cash"],
         ]
         await cmd_last(mock_update, mock_context)
         call_args = mock_update.message.reply_text.call_args[0][0]
@@ -112,6 +117,7 @@ class TestAnalytics:
 
     async def test_help_formatting(self, mock_update, mock_context):
         from handlers import cmd_help
+
         await cmd_help(mock_update, mock_context)
         call_args = mock_update.message.reply_text.call_args[0][0]
         assert "👋 Expense Tracker" in call_args
@@ -119,33 +125,49 @@ class TestAnalytics:
 
     async def test_undo_empty(self, mock_update, mock_context):
         from handlers import cmd_undo, _last_expense
+
         _last_expense.clear()
         await cmd_undo(mock_update, mock_context)
-        mock_update.message.reply_text.assert_called_once_with("No recent expense found.")
+        mock_update.message.reply_text.assert_called_once_with(
+            "No recent expense found."
+        )
 
     @patch("handlers.sheet")
     async def test_undo_success(self, mock_sheet, mock_update, mock_context):
         from handlers import cmd_undo, _last_expense
         import time
-        _last_expense[mock_update.effective_user.id] = {"row_index": 5, "timestamp": time.time() - 10}
+
+        _last_expense[mock_update.effective_user.id] = {
+            "row_index": 5,
+            "timestamp": time.time() - 10,
+        }
         await cmd_undo(mock_update, mock_context)
         mock_sheet.delete_rows.assert_called_once_with(5)
-        mock_update.message.reply_text.assert_called_once_with("↩️ Last expense removed.")
+        mock_update.message.reply_text.assert_called_once_with(
+            "↩️ Last expense removed."
+        )
         assert mock_update.effective_user.id not in _last_expense
 
     @patch("handlers.sheet")
     async def test_undo_expired(self, mock_sheet, mock_update, mock_context):
         from handlers import cmd_undo, _last_expense
         import time
-        _last_expense[mock_update.effective_user.id] = {"row_index": 5, "timestamp": time.time() - 40}
+
+        _last_expense[mock_update.effective_user.id] = {
+            "row_index": 5,
+            "timestamp": time.time() - 40,
+        }
         await cmd_undo(mock_update, mock_context)
         mock_sheet.delete_rows.assert_not_called()
         mock_update.message.reply_text.assert_called_once_with("Undo window expired.")
         assert mock_update.effective_user.id not in _last_expense
 
     @patch("handlers.sheet")
-    async def test_success_message_formatting(self, mock_sheet, mock_update, mock_context):
+    async def test_success_message_formatting(
+        self, mock_sheet, mock_update, mock_context
+    ):
         from handlers import handle_message
+
         today_str = datetime.now().strftime("%d-%m-%Y")
         mock_sheet.get_all_values.return_value = [
             ["Date", "Description", "Category", "Amount", "Account"],

@@ -21,17 +21,17 @@ def parse_expense(text: str) -> dict[str, str] | None:
     Returns None if no amount found or description is empty.
     """
     # 1. Separate numbers from adjacent symbols/letters (EXCEPT dot to preserve decimals)
-    text = re.sub(r'([a-zA-Z₹:_/-])(\d)', r'\1 \2', text)
-    text = re.sub(r'(\d)([a-zA-Z₹:_/-])', r'\1 \2', text)
-    
+    text = re.sub(r"([a-zA-Z₹:_/-])(\d)", r"\1 \2", text)
+    text = re.sub(r"(\d)([a-zA-Z₹:_/-])", r"\1 \2", text)
+
     # 2. Remove currency symbols
-    text = text.replace('₹', ' ')
-    text = text.replace('/-', ' ')
-    text = re.sub(r'(?i)\b(?:rs\.?|rs:|inr)\b', ' ', text)
+    text = text.replace("₹", " ")
+    text = text.replace("/-", " ")
+    text = re.sub(r"(?i)\b(?:rs\.?|rs:|inr)\b", " ", text)
 
     # 3. Replace punctuation with space
-    text = re.sub(r'[-:_]', ' ', text)
-    
+    text = re.sub(r"[-:_]", " ", text)
+
     words = text.split()
     if not words:
         return None
@@ -39,7 +39,7 @@ def parse_expense(text: str) -> dict[str, str] | None:
     # 3. Extract ALL numeric candidates
     candidates = []
     for i, w in enumerate(words):
-        if re.match(r'^\d+(?:\.\d+)?$', w):
+        if re.match(r"^\d+(?:\.\d+)?$", w):
             candidates.append((i, float(w), w))
 
     if not candidates:
@@ -54,14 +54,14 @@ def parse_expense(text: str) -> dict[str, str] | None:
     account = "Cash"
     account_idx = -1
     account_candidates = []
-    
+
     for i, w in enumerate(words):
         if i == amount_idx:
             continue
         clean_w = w.lower()
         if clean_w in ACCOUNT_DISPLAY:
             account_candidates.append((i, clean_w))
-            
+
     if account_candidates:
         account_idx, acc_kw = account_candidates[-1]
         account = ACCOUNT_DISPLAY[acc_kw]
@@ -76,17 +76,17 @@ def parse_expense(text: str) -> dict[str, str] | None:
         desc_parts.append(w)
 
     desc = " ".join(desc_parts).strip()
-    
+
     # Normalize descriptions: remove surrounding punctuation and collapse spaces
     desc = desc.strip(" -:_,;")
-    desc = re.sub(r'\s+', ' ', desc).strip()
-    
+    desc = re.sub(r"\s+", " ", desc).strip()
+
     if not desc:
         return None
 
     return {
         "description": desc,
-        "category":    detect_category(desc),
-        "amount":      amount,
-        "account":     account,
+        "category": detect_category(desc),
+        "amount": amount,
+        "account": account,
     }

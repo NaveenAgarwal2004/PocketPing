@@ -95,7 +95,9 @@ def format_last(rows: list[list[str]]) -> str:
     return "\n".join(lines)
 
 
-def format_success(result: dict[str, str], timestamp: str, rows: list[list[str]]) -> str:
+def format_success(
+    result: dict[str, str], timestamp: str, rows: list[list[str]]
+) -> str:
     """Build the success message after logging an expense.
 
     Includes today's running total and transaction count from sheet rows.

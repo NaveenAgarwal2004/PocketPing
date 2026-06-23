@@ -33,9 +33,9 @@ def disallowed_update():
 
 
 class TestSheetsAppend:
-    
     def setup_method(self):
         from handlers import _recent_expenses, _recent_updates
+
         _recent_expenses.clear()
         _recent_updates.clear()
 
@@ -43,6 +43,7 @@ class TestSheetsAppend:
         """Valid expense message → sheet.append_row called exactly once."""
         with patch("handlers.sheet", mock_sheet):
             from handlers import handle_message
+
             await handle_message(allowed_update, MagicMock())
 
         mock_sheet.append_row.assert_called_once()
@@ -51,10 +52,11 @@ class TestSheetsAppend:
         """Row passed to append_row has exactly 5 columns in correct order."""
         with patch("handlers.sheet", mock_sheet):
             from handlers import handle_message
+
             await handle_message(allowed_update, MagicMock())
 
         call_args = mock_sheet.append_row.call_args
-        row = call_args[0][0]          # first positional argument
+        row = call_args[0][0]  # first positional argument
 
         assert len(row) == 5, f"Expected 5 columns, got {len(row)}: {row}"
         date_col, desc_col, cat_col, amount_col, account_col = row
@@ -62,8 +64,8 @@ class TestSheetsAppend:
         # Date format: DD-MM-YYYY HH:MM:SS
         datetime.strptime(date_col, "%d-%m-%Y %H:%M:%S")  # raises if wrong format
 
-        assert desc_col   == "lunch"
-        assert cat_col    == "Food"
+        assert desc_col == "lunch"
+        assert cat_col == "Food"
         assert amount_col == "80"
         assert account_col == "Cash"
 
@@ -71,6 +73,7 @@ class TestSheetsAppend:
         """append_row must use value_input_option='USER_ENTERED'."""
         with patch("handlers.sheet", mock_sheet):
             from handlers import handle_message
+
             await handle_message(allowed_update, MagicMock())
 
         call_kwargs = mock_sheet.append_row.call_args[1]
@@ -80,6 +83,7 @@ class TestSheetsAppend:
         """Messages from non-allowed users must never write to the sheet."""
         with patch("handlers.sheet", mock_sheet):
             from handlers import handle_message
+
             await handle_message(disallowed_update, MagicMock())
 
         mock_sheet.append_row.assert_not_called()
@@ -89,6 +93,7 @@ class TestSheetsAppend:
         update = _make_update(user_id=111, text="hello there")
         with patch("handlers.sheet", mock_sheet):
             from handlers import handle_message
+
             await handle_message(update, MagicMock())
 
         mock_sheet.append_row.assert_not_called()
@@ -100,24 +105,29 @@ class TestSheetsAppend:
 
         with patch("handlers.sheet", mock_sheet):
             from handlers import handle_message
+
             await handle_message(update, MagicMock())
 
-        update.message.reply_text.assert_called_once_with("Error saving to sheet. Try again.")
+        update.message.reply_text.assert_called_once_with(
+            "Error saving to sheet. Try again."
+        )
 
     async def test_bob_account_appended_correctly(self, mock_sheet):
         """BOB account keyword maps to display name 'BOB' in the sheet row."""
         update = _make_update(user_id=111, text="uber 137 bob")
         with patch("handlers.sheet", mock_sheet):
             from handlers import handle_message
+
             await handle_message(update, MagicMock())
 
         row = mock_sheet.append_row.call_args[0][0]
-        assert row[4] == "BOB"      # account column
+        assert row[4] == "BOB"  # account column
 
     async def test_upi_account_appended_correctly(self, mock_sheet):
         update = _make_update(user_id=111, text="medicine 250 upi")
         with patch("handlers.sheet", mock_sheet):
             from handlers import handle_message
+
             await handle_message(update, MagicMock())
 
         row = mock_sheet.append_row.call_args[0][0]
@@ -128,41 +138,45 @@ class TestSheetsAppend:
     async def test_duplicate_expense_ignored(self, mock_sheet):
         """same expense twice within 5 seconds must be ignored."""
         from handlers import _recent_expenses
+
         _recent_expenses.clear()
-        
+
         update1 = _make_update(user_id=111, text="lunch 80 cash")
         update2 = _make_update(user_id=111, text="lunch 80 cash")
-        
+
         with patch("handlers.sheet", mock_sheet):
             from handlers import handle_message
+
             await handle_message(update1, MagicMock())
             # Should append
             assert mock_sheet.append_row.call_count == 1
-            
+
             await handle_message(update2, MagicMock())
             # Should NOT append again
             assert mock_sheet.append_row.call_count == 1
-            
-            update2.message.reply_text.assert_called_once_with("⚠️ Duplicate expense ignored.")
+
+            update2.message.reply_text.assert_called_once_with(
+                "⚠️ Duplicate expense ignored."
+            )
 
     @patch("time.time")
     async def test_non_duplicate_after_delay(self, mock_time, mock_sheet):
         """same expense after 5 seconds must be appended."""
         from handlers import _recent_expenses
+
         _recent_expenses.clear()
-        
+
         update1 = _make_update(user_id=111, text="lunch 80 cash")
         update2 = _make_update(user_id=111, text="lunch 80 cash")
-        
+
         with patch("handlers.sheet", mock_sheet):
             from handlers import handle_message
-            
+
             mock_time.return_value = 1000.0
             await handle_message(update1, MagicMock())
             assert mock_sheet.append_row.call_count == 1
-            
+
             # advance time by 6 seconds
             mock_time.return_value = 1006.0
             await handle_message(update2, MagicMock())
             assert mock_sheet.append_row.call_count == 2
-

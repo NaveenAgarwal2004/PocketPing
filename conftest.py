@@ -23,10 +23,10 @@ import pytest
 # ── Minimal env vars that config.py requires ─────────────────────────────
 _ENV = {
     "TELEGRAM_BOT_TOKEN": "test-token-123",
-    "GOOGLE_SHEET_ID":    "test-sheet-id",
-    "GOOGLE_CREDS_FILE":  "credentials.json",
-    "ALLOWED_USER_IDS":   "111,222",
-    "PORT":               "8080",
+    "GOOGLE_SHEET_ID": "test-sheet-id",
+    "GOOGLE_CREDS_FILE": "credentials.json",
+    "ALLOWED_USER_IDS": "111,222",
+    "PORT": "8080",
 }
 
 
@@ -36,24 +36,26 @@ def _install_google_stubs():
     # --- google.oauth2.service_account stub ---
     mock_creds_instance = MagicMock()
     mock_sa_module = MagicMock()
-    mock_sa_module.Credentials.from_service_account_file.return_value = mock_creds_instance
+    mock_sa_module.Credentials.from_service_account_file.return_value = (
+        mock_creds_instance
+    )
 
-    google_pkg       = types.ModuleType("google")
-    google_oauth2    = types.ModuleType("google.oauth2")
+    google_pkg = types.ModuleType("google")
+    google_oauth2 = types.ModuleType("google.oauth2")
     google_oauth2_sa = mock_sa_module
 
     google_pkg.oauth2 = google_oauth2
     google_oauth2.service_account = google_oauth2_sa
 
-    sys.modules["google"]                      = google_pkg
-    sys.modules["google.oauth2"]               = google_oauth2
+    sys.modules["google"] = google_pkg
+    sys.modules["google.oauth2"] = google_oauth2
     sys.modules["google.oauth2.service_account"] = google_oauth2_sa
 
     # --- gspread stub ---
-    mock_sheet        = MagicMock()
-    mock_worksheet    = MagicMock()
+    mock_sheet = MagicMock()
+    mock_worksheet = MagicMock()
     mock_worksheet.sheet1 = mock_sheet
-    mock_gspread      = MagicMock()
+    mock_gspread = MagicMock()
     mock_gspread.authorize.return_value.open_by_key.return_value = mock_worksheet
 
     sys.modules["gspread"] = mock_gspread
