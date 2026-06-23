@@ -1,6 +1,5 @@
 import os
 import re
-import json
 import logging
 from datetime import datetime
 from threading import Thread
@@ -60,7 +59,6 @@ CATEGORIES = {
     "Other":         [],
 }
 
-ACCOUNTS = ["bob", "indusind", "cash", "upi", "gpay", "phonepe", "paytm", "other"]
 
 ACCOUNT_DISPLAY = {
     "bob": "BOB", "indusind": "IndusInd", "cash": "Cash", "upi": "UPI",
@@ -92,8 +90,8 @@ def parse_expense(text):
     account = "Cash"
     desc_parts = []
     for w in words:
-        if w.lower() in ACCOUNTS:
-            account = ACCOUNT_DISPLAY.get(w.lower(), w.title())
+        if w.lower() in ACCOUNT_DISPLAY:
+            account = ACCOUNT_DISPLAY[w.lower()]
         else:
             desc_parts.append(w)
     desc = " ".join(desc_parts).strip()
@@ -162,7 +160,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 if __name__ == "__main__":
     # Health server in daemon thread — keeps Render Free Web Service alive
     Thread(target=run_health_server, daemon=True).start()
-    logger.info("Health server started on port %s", PORT)
+    logger.info("Health server starting on port %s", PORT)
 
     # Build and run Telegram bot with polling
     app = ApplicationBuilder().token(BOT_TOKEN).build()
