@@ -20,18 +20,17 @@ def parse_expense(text: str) -> dict[str, str] | None:
 
     Returns None if no amount found or description is empty.
     """
-    # 1. Normalize explicit currency symbols that get destroyed by punctuation removal
+    # 1. Separate numbers from adjacent symbols/letters (EXCEPT dot to preserve decimals)
+    text = re.sub(r'([a-zA-Z₹:_/-])(\d)', r'\1 \2', text)
+    text = re.sub(r'(\d)([a-zA-Z₹:_/-])', r'\1 \2', text)
+    
+    # 2. Remove currency symbols
     text = text.replace('₹', ' ')
     text = text.replace('/-', ' ')
+    text = re.sub(r'(?i)\b(?:rs\.?|rs:|inr)\b', ' ', text)
 
-    # 2. Normalize punctuation
+    # 3. Replace punctuation with space
     text = re.sub(r'[-:_]', ' ', text)
-    # Separate letters and numbers
-    text = re.sub(r'([a-zA-Z])(\d)', r'\1 \2', text)
-    text = re.sub(r'(\d)([a-zA-Z])', r'\1 \2', text)
-    
-    # 3. Normalize word-based currency symbols AFTER separation
-    text = re.sub(r'(?i)\b(?:rs|inr)\b', ' ', text)
     
     words = text.split()
     if not words:
@@ -46,8 +45,8 @@ def parse_expense(text: str) -> dict[str, str] | None:
     if not candidates:
         return None
 
-    # 4. Choose most probable expense amount (Highest standalone number)
-    best_candidate = max(candidates, key=lambda x: x[1])
+    # 4. Choose most probable expense amount (Last standalone number)
+    best_candidate = candidates[-1]
     amount_idx = best_candidate[0]
     amount = best_candidate[2]
 
@@ -77,6 +76,11 @@ def parse_expense(text: str) -> dict[str, str] | None:
         desc_parts.append(w)
 
     desc = " ".join(desc_parts).strip()
+    
+    # Normalize descriptions: remove surrounding punctuation and collapse spaces
+    desc = desc.strip(" -:_,;")
+    desc = re.sub(r'\s+', ' ', desc).strip()
+    
     if not desc:
         return None
 

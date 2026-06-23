@@ -35,8 +35,9 @@ def disallowed_update():
 class TestSheetsAppend:
     
     def setup_method(self):
-        from handlers import _recent_expenses
+        from handlers import _recent_expenses, _recent_updates
         _recent_expenses.clear()
+        _recent_updates.clear()
 
     async def test_append_row_called_on_valid_expense(self, mock_sheet, allowed_update):
         """Valid expense message → sheet.append_row called exactly once."""

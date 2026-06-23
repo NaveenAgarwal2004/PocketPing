@@ -220,6 +220,24 @@ class TestParseExpense:
         assert parse_expense("20/- chai") == {"description": "chai", "category": "Food", "amount": "20", "account": "Cash"}
 
     def test_uber_sector_multiple_numbers(self):
-        # 120 is the highest number
+        # 14 is the last number! Wait, the test was originally testing highest. Now it should be last.
+        # "Uber from Sector 21 to 14 120 bob" -> numbers are 21, 14, 120. Last is 120.
         assert parse_expense("Uber from Sector 21 to 14 120 bob") == {"description": "Uber from Sector 21 to 14", "category": "Transport", "amount": "120", "account": "BOB"}
+
+    # ── Sprint 2 Phase 2 Tests ──────────────────────────────────────────────
+
+    def test_loan_emi_last_number(self):
+        assert parse_expense("loan emi 5000 350 bob") == {"description": "loan emi 5000", "category": "Other", "amount": "350", "account": "BOB"}
+
+    def test_food_rupee_220(self):
+        assert parse_expense("food ₹220 cash") == {"description": "food", "category": "Food", "amount": "220", "account": "Cash"}
+
+    def test_food_rs_dot_220(self):
+        assert parse_expense("food Rs.220 cash") == {"description": "food", "category": "Food", "amount": "220", "account": "Cash"}
+
+    def test_food_inr220(self):
+        assert parse_expense("food inr220 cash") == {"description": "food", "category": "Food", "amount": "220", "account": "Cash"}
+
+    def test_food_colon_220(self):
+        assert parse_expense("food:220 cash") == {"description": "food", "category": "Food", "amount": "220", "account": "Cash"}
 

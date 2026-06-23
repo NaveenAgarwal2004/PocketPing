@@ -13,6 +13,7 @@ from sheets import sheet
 
 logger = logging.getLogger(__name__)
 
+_recent_updates: dict[int, float] = {}
 _recent_expenses: dict[tuple, float] = {}
 
 
@@ -58,6 +59,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
 
     now = time.time()
+    
+    if update.update_id in _recent_updates:
+        if now - _recent_updates[update.update_id] <= 5.0:
+            await update.message.reply_text("⚠️ Duplicate expense ignored.")
+            return
+
     dup_key = (
         update.effective_user.id,
         result["description"].lower(),
@@ -70,12 +77,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             await update.message.reply_text("⚠️ Duplicate expense ignored.")
             return
 
+    _recent_updates[update.update_id] = now
     _recent_expenses[dup_key] = now
 
-    # Cleanup memory
-    for k in list(_recent_expenses.keys()):
-        if now - _recent_expenses[k] > 10.0:
-            del _recent_expenses[k]
+    # Cleanup memory only when it grows beyond 100
+    if len(_recent_expenses) > 100:
+        for k in list(_recent_expenses.keys()):
+            if now - _recent_expenses[k] > 10.0:
+                del _recent_expenses[k]
+                
+    if len(_recent_updates) > 100:
+        for k in list(_recent_updates.keys()):
+            if now - _recent_updates[k] > 10.0:
+                del _recent_updates[k]
 
     today_str = datetime.now().strftime("%d-%m-%Y")
     timestamp_str = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
