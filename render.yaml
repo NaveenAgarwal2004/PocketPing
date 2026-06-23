@@ -1,0 +1,14 @@
+services:
+  - type: worker
+    name: expense-bot
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: GOOGLE_SHEET_ID
+        sync: false
+      - key: GOOGLE_CREDS_FILE
+        value: credentials.json
+      - key: ALLOWED_USER_IDS
+        sync: false

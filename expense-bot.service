@@ -1,0 +1,15 @@
+[Unit]
+Description=Naveen Expense Telegram Bot
+After=network.target
+
+[Service]
+Type=simple
+User=YOUR_LINUX_USERNAME
+WorkingDirectory=/path/to/expense-bot
+EnvironmentFile=/path/to/expense-bot/.env
+ExecStart=/usr/bin/python3 /path/to/expense-bot/bot.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
