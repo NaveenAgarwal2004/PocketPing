@@ -59,7 +59,7 @@ class TestParseExpense:
     def test_chai_20_cash(self):
         result = parse_expense("chai 20 cash")
         assert result == {
-            "description": "Chai",
+            "description": "chai",
             "category":    "Food",
             "amount":      "20",
             "account":     "Cash",
@@ -68,7 +68,7 @@ class TestParseExpense:
     def test_uber_137_bob(self):
         result = parse_expense("uber 137 bob")
         assert result == {
-            "description": "Uber",
+            "description": "uber",
             "category":    "Transport",
             "amount":      "137",
             "account":     "BOB",
@@ -77,7 +77,7 @@ class TestParseExpense:
     def test_metro_25_indusind(self):
         result = parse_expense("metro 25 indusind")
         assert result == {
-            "description": "Metro",
+            "description": "metro",
             "category":    "Metro",
             "amount":      "25",
             "account":     "IndusInd",
@@ -86,7 +86,7 @@ class TestParseExpense:
     def test_medicine_250_upi(self):
         result = parse_expense("medicine 250 upi")
         assert result == {
-            "description": "Medicine",
+            "description": "medicine",
             "category":    "Health",
             "amount":      "250",
             "account":     "UPI",
@@ -95,7 +95,7 @@ class TestParseExpense:
     def test_light_bill_636_bob(self):
         result = parse_expense("light bill 636 bob")
         assert result == {
-            "description": "Light Bill",
+            "description": "light bill",
             "category":    "Bills",
             "amount":      "636",
             "account":     "BOB",
@@ -104,7 +104,7 @@ class TestParseExpense:
     def test_repair_500_cash(self):
         result = parse_expense("repair 500 cash")
         assert result == {
-            "description": "Repair",
+            "description": "repair",
             "category":    "Home",
             "amount":      "500",
             "account":     "Cash",
@@ -137,12 +137,12 @@ class TestParseExpense:
     def test_leading_trailing_whitespace(self):
         result = parse_expense("  lunch 80  ")
         assert result is not None
-        assert result["description"] == "Lunch"
+        assert result["description"] == "lunch"
 
-    def test_description_is_title_cased(self):
+    def test_description_preserves_case(self):
         result = parse_expense("light bill 200")
         assert result is not None
-        assert result["description"] == "Light Bill"
+        assert result["description"] == "light bill"
 
     def test_all_known_accounts(self):
         accounts = {
@@ -159,36 +159,67 @@ class TestParseExpense:
 
     def test_chai_cash_20(self):
         result = parse_expense("chai cash 20")
-        assert result == {"description": "Chai", "category": "Food", "amount": "20", "account": "Cash"}
+        assert result == {"description": "chai", "category": "Food", "amount": "20", "account": "Cash"}
 
     def test_20_chai(self):
         result = parse_expense("20 chai")
-        assert result == {"description": "Chai", "category": "Food", "amount": "20", "account": "Cash"}
+        assert result == {"description": "chai", "category": "Food", "amount": "20", "account": "Cash"}
 
     def test_20_chai_cash(self):
         result = parse_expense("20 chai cash")
-        assert result == {"description": "Chai", "category": "Food", "amount": "20", "account": "Cash"}
+        assert result == {"description": "chai", "category": "Food", "amount": "20", "account": "Cash"}
 
     def test_spent_20_on_chai(self):
         result = parse_expense("spent 20 on chai")
-        assert result == {"description": "Spent On Chai", "category": "Food", "amount": "20", "account": "Cash"}
+        assert result == {"description": "spent on chai", "category": "Food", "amount": "20", "account": "Cash"}
 
     def test_spent_20_on_chai_cash(self):
         result = parse_expense("spent 20 on chai cash")
-        assert result == {"description": "Spent On Chai", "category": "Food", "amount": "20", "account": "Cash"}
+        assert result == {"description": "spent on chai", "category": "Food", "amount": "20", "account": "Cash"}
 
     def test_food_shared_with_vivek(self):
         result = parse_expense("food shared with vivek 220 bob")
-        assert result == {"description": "Food Shared With Vivek", "category": "Food", "amount": "220", "account": "BOB"}
+        assert result == {"description": "food shared with vivek", "category": "Food", "amount": "220", "account": "BOB"}
 
     def test_uber_home_to_office(self):
         result = parse_expense("uber home to office 137 bob")
-        assert result == {"description": "Uber Home To Office", "category": "Transport", "amount": "137", "account": "BOB"}
+        assert result == {"description": "uber home to office", "category": "Transport", "amount": "137", "account": "BOB"}
 
     def test_metro_card_recharge(self):
         result = parse_expense("metro card recharge 300 bob")
-        assert result == {"description": "Metro Card Recharge", "category": "Metro", "amount": "300", "account": "BOB"}
+        assert result == {"description": "metro card recharge", "category": "Metro", "amount": "300", "account": "BOB"}
 
     def test_light_bill_bob(self):
         result = parse_expense("light bill 636 bob")
-        assert result == {"description": "Light Bill", "category": "Bills", "amount": "636", "account": "BOB"}
+        assert result == {"description": "light bill", "category": "Bills", "amount": "636", "account": "BOB"}
+
+    # ── Task 1 Tests ────────────────────────────────────────────────────────
+
+    def test_chai20_compact(self):
+        assert parse_expense("chai20") == {"description": "chai", "category": "Food", "amount": "20", "account": "Cash"}
+
+    def test_chai_dash_20(self):
+        assert parse_expense("chai-20") == {"description": "chai", "category": "Food", "amount": "20", "account": "Cash"}
+
+    def test_chai_colon_20(self):
+        assert parse_expense("chai:20") == {"description": "chai", "category": "Food", "amount": "20", "account": "Cash"}
+
+    def test_chai_underscore_20(self):
+        assert parse_expense("chai_20") == {"description": "chai", "category": "Food", "amount": "20", "account": "Cash"}
+
+    def test_rupee_symbol(self):
+        assert parse_expense("₹20 chai") == {"description": "chai", "category": "Food", "amount": "20", "account": "Cash"}
+
+    def test_rs_space(self):
+        assert parse_expense("Rs 20 chai") == {"description": "chai", "category": "Food", "amount": "20", "account": "Cash"}
+
+    def test_rs_compact(self):
+        assert parse_expense("20rs chai") == {"description": "chai", "category": "Food", "amount": "20", "account": "Cash"}
+
+    def test_slash_dash(self):
+        assert parse_expense("20/- chai") == {"description": "chai", "category": "Food", "amount": "20", "account": "Cash"}
+
+    def test_uber_sector_multiple_numbers(self):
+        # 120 is the highest number
+        assert parse_expense("Uber from Sector 21 to 14 120 bob") == {"description": "Uber from Sector 21 to 14", "category": "Transport", "amount": "120", "account": "BOB"}
+

@@ -33,6 +33,11 @@ def disallowed_update():
 
 
 class TestSheetsAppend:
+    
+    def setup_method(self):
+        from handlers import _recent_expenses
+        _recent_expenses.clear()
+
     async def test_append_row_called_on_valid_expense(self, mock_sheet, allowed_update):
         """Valid expense message → sheet.append_row called exactly once."""
         with patch("handlers.sheet", mock_sheet):
@@ -56,7 +61,7 @@ class TestSheetsAppend:
         # Date format: DD-MM-YYYY HH:MM:SS
         datetime.strptime(date_col, "%d-%m-%Y %H:%M:%S")  # raises if wrong format
 
-        assert desc_col   == "Lunch"
+        assert desc_col   == "lunch"
         assert cat_col    == "Food"
         assert amount_col == "80"
         assert account_col == "Cash"
@@ -116,3 +121,47 @@ class TestSheetsAppend:
 
         row = mock_sheet.append_row.call_args[0][0]
         assert row[4] == "UPI"
+
+    # ── Task 2 Duplicate Detection Tests ────────────────────────────────────
+
+    async def test_duplicate_expense_ignored(self, mock_sheet):
+        """same expense twice within 5 seconds must be ignored."""
+        from handlers import _recent_expenses
+        _recent_expenses.clear()
+        
+        update1 = _make_update(user_id=111, text="lunch 80 cash")
+        update2 = _make_update(user_id=111, text="lunch 80 cash")
+        
+        with patch("handlers.sheet", mock_sheet):
+            from handlers import handle_message
+            await handle_message(update1, MagicMock())
+            # Should append
+            assert mock_sheet.append_row.call_count == 1
+            
+            await handle_message(update2, MagicMock())
+            # Should NOT append again
+            assert mock_sheet.append_row.call_count == 1
+            
+            update2.message.reply_text.assert_called_once_with("⚠️ Duplicate expense ignored.")
+
+    @patch("time.time")
+    async def test_non_duplicate_after_delay(self, mock_time, mock_sheet):
+        """same expense after 5 seconds must be appended."""
+        from handlers import _recent_expenses
+        _recent_expenses.clear()
+        
+        update1 = _make_update(user_id=111, text="lunch 80 cash")
+        update2 = _make_update(user_id=111, text="lunch 80 cash")
+        
+        with patch("handlers.sheet", mock_sheet):
+            from handlers import handle_message
+            
+            mock_time.return_value = 1000.0
+            await handle_message(update1, MagicMock())
+            assert mock_sheet.append_row.call_count == 1
+            
+            # advance time by 6 seconds
+            mock_time.return_value = 1006.0
+            await handle_message(update2, MagicMock())
+            assert mock_sheet.append_row.call_count == 2
+

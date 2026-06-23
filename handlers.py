@@ -1,6 +1,7 @@
 """Telegram bot handlers — /start, /today, and expense message handler."""
 
 import logging
+import time
 from datetime import datetime
 
 from telegram import Update
@@ -11,6 +12,8 @@ from parser import parse_expense
 from sheets import sheet
 
 logger = logging.getLogger(__name__)
+
+_recent_expenses: dict[tuple, float] = {}
 
 
 def is_allowed(uid: int) -> bool:
@@ -53,6 +56,27 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if not result:
         await update.message.reply_text("Couldn't parse that. Try: chai 20 cash")
         return
+
+    now = time.time()
+    dup_key = (
+        update.effective_user.id,
+        result["description"].lower(),
+        result["amount"],
+        result["account"]
+    )
+
+    if dup_key in _recent_expenses:
+        if now - _recent_expenses[dup_key] <= 5.0:
+            await update.message.reply_text("⚠️ Duplicate expense ignored.")
+            return
+
+    _recent_expenses[dup_key] = now
+
+    # Cleanup memory
+    for k in list(_recent_expenses.keys()):
+        if now - _recent_expenses[k] > 10.0:
+            del _recent_expenses[k]
+
     today_str = datetime.now().strftime("%d-%m-%Y")
     timestamp_str = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
     row = [timestamp_str, result["description"], result["category"],
