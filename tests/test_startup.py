@@ -14,7 +14,6 @@ For runtime assertions we test the individual components:
 
 import ast
 from pathlib import Path
-from unittest.mock import MagicMock, patch, AsyncMock
 import inspect
 
 
@@ -67,8 +66,8 @@ class TestTelegramStartupStatic:
             "run_polling must be called with drop_pending_updates=True"
         )
 
-    def test_four_add_handler_calls(self):
-        """Exactly 4 add_handler calls must appear in the __main__ block."""
+    def test_six_add_handler_calls(self):
+        """Exactly 6 add_handler calls must appear in the __main__ block."""
         block = _get_main_block_src()
         calls = [
             node for node in ast.walk(block)
@@ -78,7 +77,7 @@ class TestTelegramStartupStatic:
                 and node.func.attr == "add_handler"
             )
         ]
-        assert len(calls) == 4, f"Expected 4 add_handler calls, found {len(calls)}"
+        assert len(calls) == 6, f"Expected 6 add_handler calls, found {len(calls)}"
 
     def test_command_handler_start_registered(self):
         """A CommandHandler for 'start' must be registered."""
@@ -104,6 +103,22 @@ class TestTelegramStartupStatic:
             "CommandHandler for 'last' not found in __main__ block"
         )
 
+    def test_command_handler_help_registered(self):
+        """A CommandHandler for 'help' must be registered."""
+        block = _get_main_block_src()
+        src = ast.unparse(block)
+        assert '"help"' in src or "'help'" in src, (
+            "CommandHandler for 'help' not found in __main__ block"
+        )
+
+    def test_command_handler_undo_registered(self):
+        """A CommandHandler for 'undo' must be registered."""
+        block = _get_main_block_src()
+        src = ast.unparse(block)
+        assert '"undo"' in src or "'undo'" in src, (
+            "CommandHandler for 'undo' not found in __main__ block"
+        )
+
 
 class TestTelegramStartupRuntime:
     """Runtime tests — verify callable types and config without starting the bot."""
@@ -126,6 +141,16 @@ class TestTelegramStartupRuntime:
         from handlers import cmd_last
         assert inspect.iscoroutinefunction(cmd_last), \
             "cmd_last must be an async function"
+
+    def test_cmd_help_is_coroutine_function(self):
+        from handlers import cmd_help
+        assert inspect.iscoroutinefunction(cmd_help), \
+            "cmd_help must be an async function"
+
+    def test_cmd_undo_is_coroutine_function(self):
+        from handlers import cmd_undo
+        assert inspect.iscoroutinefunction(cmd_undo), \
+            "cmd_undo must be an async function"
 
     def test_handle_message_is_coroutine_function(self):
         from handlers import handle_message

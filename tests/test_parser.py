@@ -5,7 +5,6 @@ All cases are derived from the documented examples in SETUP.md.
 No mocks required; parser is pure Python with no I/O.
 """
 
-import pytest
 from parser import detect_category, parse_expense
 
 

@@ -7,7 +7,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 
 from config import BOT_TOKEN, PORT
 from health import run_health_server
-from handlers import cmd_start, cmd_today, cmd_last, handle_message
+from handlers import cmd_start, cmd_today, cmd_last, cmd_help, cmd_undo, handle_message
 
 logger = logging.getLogger(__name__)
 
@@ -19,8 +19,10 @@ if __name__ == "__main__":
     # Build and run Telegram bot with polling
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", cmd_start))
+    app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(CommandHandler("today", cmd_today))
     app.add_handler(CommandHandler("last", cmd_last))
+    app.add_handler(CommandHandler("undo", cmd_undo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     logger.info("Bot polling started")

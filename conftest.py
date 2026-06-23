@@ -15,7 +15,7 @@ Strategy:
 import os
 import sys
 import types
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 

@@ -1,4 +1,4 @@
-"""Telegram bot handlers — /start, /today, and expense message handler."""
+"""Telegram bot handlers — /start, /help, /today, /last, /undo, and expense message handler."""
 
 import logging
 import time
@@ -10,23 +10,18 @@ from telegram.ext import ContextTypes
 from config import ALLOWED_USER_IDS
 from parser import parse_expense
 from sheets import sheet
+from analytics import format_today, format_last, format_success, format_help
 
 logger = logging.getLogger(__name__)
 
 _recent_updates: dict[int, float] = {}
 _recent_expenses: dict[tuple, float] = {}
 
-CATEGORY_EMOJIS = {
-    "Food": "🍔",
-    "Transport": "🚕",
-    "Metro": "🚇",
-    "Health": "💊",
-    "Bills": "💡",
-    "Home": "🏠",
-    "Entertainment": "🎬",
-    "Shopping": "🛍️",
-    "Other": "🏷️"
-}
+# Undo tracking: user_id -> {row_index, timestamp}
+_last_expense: dict[int, dict] = {}
+
+UNDO_WINDOW_SECONDS = 30
+
 
 def is_allowed(uid: int) -> bool:
     """Check if user ID is in the allowed set."""
@@ -34,82 +29,65 @@ def is_allowed(uid: int) -> bool:
 
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle /start command — show onboarding message."""
     if not is_allowed(update.effective_user.id):
         return
-    await update.message.reply_text(
-        "Hey! Send expenses like:\n"
-        "  chai 20 cash\n"
-        "  uber 137 bob\n"
-        "  lunch 80\n\n"
-        "Commands:\n"
-        "  /today — today's total"
-    )
+    await update.message.reply_text(format_help())
+
+
+async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle /help command — show onboarding message."""
+    if not is_allowed(update.effective_user.id):
+        return
+    await update.message.reply_text(format_help())
 
 
 async def cmd_today(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle /today command — show today's expense summary."""
     if not is_allowed(update.effective_user.id):
         return
-    today_str = datetime.now().strftime("%d-%m-%Y")
     rows = sheet.get_all_values()
-    
-    totals_by_cat = {}
-    total = 0.0
-    count = 0
-    
-    for r in rows:
-        if r and len(r) >= 4 and r[0].startswith(today_str):
-            try:
-                amt = float(r[3])
-                cat = r[2]
-                totals_by_cat[cat] = totals_by_cat.get(cat, 0.0) + amt
-                total += amt
-                count += 1
-            except (ValueError, IndexError):
-                pass
-
-    if count == 0:
-        await update.message.reply_text("No expenses found.")
-        return
-
-    lines = ["📅 Today\n"]
-    for cat, amt in totals_by_cat.items():
-        emoji = CATEGORY_EMOJIS.get(cat, "🏷️")
-        lines.append(f"{emoji} {cat.ljust(13)} ₹{amt:.0f}")
-        
-    lines.append("\n────────────────\n")
-    lines.append(f"💰 Total         ₹{total:.0f}")
-    lines.append(f"📝 Transactions  {count}")
-    
-    await update.message.reply_text("\n".join(lines))
+    await update.message.reply_text(format_today(rows))
 
 
 async def cmd_last(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle /last command — show last 5 expenses."""
     if not is_allowed(update.effective_user.id):
         return
     rows = sheet.get_all_values()
-    
-    # Exclude header row if present
-    if rows and len(rows[0]) >= 4 and rows[0][3] == "Amount":
-        rows = rows[1:]
-        
-    if not rows:
-        await update.message.reply_text("No expenses found.")
+    await update.message.reply_text(format_last(rows))
+
+
+async def cmd_undo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle /undo command — remove last expense within 30s window."""
+    if not is_allowed(update.effective_user.id):
         return
-        
-    latest = rows[-5:]
-    latest.reverse()
-    
-    lines = [f"🕒 Last {len(latest)} Expenses\n"]
-    for r in latest:
-        if len(r) >= 5:
-            date_str, desc, cat, amt, acc = r[0], r[1], r[2], r[3], r[4]
-            emoji = CATEGORY_EMOJIS.get(cat, "🏷️")
-            lines.append(f"{emoji} {desc.title()}\n₹{amt} • {acc}\n")
-            
-    await update.message.reply_text("\n".join(lines).strip())
+
+    uid = update.effective_user.id
+
+    if uid not in _last_expense:
+        await update.message.reply_text("No recent expense found.")
+        return
+
+    entry = _last_expense[uid]
+    elapsed = time.time() - entry["timestamp"]
+
+    if elapsed > UNDO_WINDOW_SECONDS:
+        del _last_expense[uid]
+        await update.message.reply_text("Undo window expired.")
+        return
+
+    try:
+        sheet.delete_rows(entry["row_index"])
+        del _last_expense[uid]
+        await update.message.reply_text("↩️ Last expense removed.")
+    except Exception as e:
+        logger.error(f"Undo error: {e}")
+        await update.message.reply_text("Error undoing expense. Try again.")
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle plaintext messages — parse and log expenses."""
     if not is_allowed(update.effective_user.id):
         return
     result = parse_expense(update.message.text)
@@ -118,7 +96,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
 
     now = time.time()
-    
+
     if update.update_id in _recent_updates:
         if now - _recent_updates[update.update_id] <= 5.0:
             await update.message.reply_text("⚠️ Duplicate expense ignored.")
@@ -144,23 +122,38 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         for k in list(_recent_expenses.keys()):
             if now - _recent_expenses[k] > 10.0:
                 del _recent_expenses[k]
-                
+
     if len(_recent_updates) > 100:
         for k in list(_recent_updates.keys()):
             if now - _recent_updates[k] > 10.0:
                 del _recent_updates[k]
 
-    today_str = datetime.now().strftime("%d-%m-%Y")
     timestamp_str = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
     row = [timestamp_str, result["description"], result["category"],
            result["amount"], result["account"]]
     try:
+        # Read rows BEFORE appending (for today's total calculation)
+        rows = sheet.get_all_values()
         sheet.append_row(row, value_input_option="USER_ENTERED")
-        await update.message.reply_text(
-            f"✓ Logged!\n"
-            f"  {timestamp_str}  |  {result['description']}\n"
-            f"  {result['category']}  ·  ₹{result['amount']}  ·  {result['account']}"
-        )
+
+        # Track for undo: row_index is len(rows) + 1 (1-indexed, after append)
+        row_index = len(rows) + 1
+        _last_expense[update.effective_user.id] = {
+            "row_index": row_index,
+            "timestamp": now,
+        }
+
+        # Cleanup undo tracking when it grows beyond 50
+        if len(_last_expense) > 50:
+            stale_uids = [
+                uid for uid, e in _last_expense.items()
+                if now - e["timestamp"] > UNDO_WINDOW_SECONDS
+            ]
+            for uid in stale_uids:
+                del _last_expense[uid]
+
+        reply = format_success(result, timestamp_str, rows)
+        await update.message.reply_text(reply)
     except Exception as e:
         logger.error(f"Sheet error: {e}")
         await update.message.reply_text("Error saving to sheet. Try again.")
