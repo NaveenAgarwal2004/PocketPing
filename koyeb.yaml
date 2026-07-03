@@ -1,0 +1,35 @@
+name: pocketping
+
+services:
+  - name: bot
+    type: web
+    git:
+      repository: github.com/NaveenAgarwal2004/PocketPing
+      branch: main
+    docker:
+      dockerfile: Dockerfile
+    instance_type: free
+    regions:
+      - was  # Washington DC — closest to India with low latency
+    ports:
+      - port: 10000
+        protocol: http
+    health_checks:
+      - path: /health
+        port: 10000
+        protocol: http
+        interval: 30
+        timeout: 5
+        healthy_threshold: 1
+        unhealthy_threshold: 3
+    env:
+      - key: TELEGRAM_BOT_TOKEN
+        secret: true
+      - key: GOOGLE_SHEET_ID
+        secret: true
+      - key: GOOGLE_CREDS_FILE
+        value: credentials.json
+      - key: ALLOWED_USER_IDS
+        secret: true
+      - key: PORT
+        value: "10000"
