@@ -1,4 +1,4 @@
-name: Keep Render Awake
+name: Health Check
 
 on:
   schedule:
@@ -11,4 +11,11 @@ jobs:
     steps:
       - name: Ping health endpoint
         run: |
-          curl -sf "${{ secrets.RENDER_HEALTH_URL }}" || echo "Ping failed, Render may be cold-starting"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ secrets.RENDER_HEALTH_URL }}")
+          echo "Health check status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "⚠️ Bot returned $STATUS — may be down"
+            exit 1
+          else
+            echo "✅ Bot is healthy"
+          fi
