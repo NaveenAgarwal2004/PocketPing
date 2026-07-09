@@ -9,7 +9,7 @@ from telegram.ext import ContextTypes
 
 from config import ALLOWED_USER_IDS
 from parser import parse_expense
-from sheets import sheet
+from sheets import get_sheet          # ← dynamic: resolves fresh each time
 from analytics import format_today, format_last, format_success, format_help
 
 logger = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ async def cmd_today(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /today command — show today's expense summary."""
     if not is_allowed(update.effective_user.id):
         return
-    rows = sheet.get_all_values()
+    rows = get_sheet().get_all_values()
     await update.message.reply_text(format_today(rows))
 
 
@@ -54,7 +54,7 @@ async def cmd_last(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /last command — show last 5 expenses."""
     if not is_allowed(update.effective_user.id):
         return
-    rows = sheet.get_all_values()
+    rows = get_sheet().get_all_values()
     await update.message.reply_text(format_last(rows))
 
 
@@ -78,7 +78,7 @@ async def cmd_undo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     try:
-        sheet.delete_rows(entry["row_index"])
+        get_sheet().delete_rows(entry["row_index"])
         del _last_expense[uid]
         await update.message.reply_text("↩️ Last expense removed.")
     except Exception as e:
@@ -128,7 +128,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             if now - _recent_updates[k] > 10.0:
                 del _recent_updates[k]
 
-    timestamp_str = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+    # ISO format (YYYY-MM-DD) — unambiguous for Google Sheets regardless of locale
+    # Fixes the DD-MM-YYYY → April/July mis-parse that broke monthly trend formulas
+    timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
     row = [
         timestamp_str,
         result["description"],
@@ -137,18 +140,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         result["account"],
     ]
     try:
-        # Read rows BEFORE appending (for today's total calculation)
-        rows = sheet.get_all_values()
-        sheet.append_row(row, value_input_option="USER_ENTERED")
+        ws = get_sheet()          # fresh resolve on every write
+        rows = ws.get_all_values()
+        ws.append_row(row, value_input_option="USER_ENTERED")
 
-        # Track for undo: row_index is len(rows) + 1 (1-indexed, after append)
         row_index = len(rows) + 1
         _last_expense[update.effective_user.id] = {
             "row_index": row_index,
             "timestamp": now,
         }
 
-        # Cleanup undo tracking when it grows beyond 50
         if len(_last_expense) > 50:
             stale_uids = [
                 uid
